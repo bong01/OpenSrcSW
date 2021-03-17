@@ -5,7 +5,12 @@ import java.io.IOException;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.snu.ids.kkma.index.Keyword;
+import org.snu.ids.kkma.index.KeywordExtractor;
+import org.snu.ids.kkma.index.KeywordList;
 import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 
 import javax.xml.parsers.DocumentBuilder;
@@ -18,11 +23,11 @@ import javax.xml.transform.stream.StreamResult;
 
 public class Test {
     public static void main(String[] args) {
-        File path = new File("/Users/bong/SimpleIR"); // dir
+        File path = new File("/Users/bong/SimpleIR"); // file list
         File[] fileList = path.listFiles();
 
-        if (fileList.length > 0) {   // empty?
-            int id =0;
+        if (fileList.length > 0) {
+            int id = 0;
             DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
             DocumentBuilder docBuilder = null;
             try {
@@ -30,32 +35,33 @@ public class Test {
             } catch (ParserConfigurationException e) {
                 e.printStackTrace();
             }
-            org.w3c.dom.Document doc_2 = docBuilder.newDocument();    // new doc
+            org.w3c.dom.Document new_document = docBuilder.newDocument();    // new document (collection)
 
-            Element e_docs = doc_2.createElement("docs");
+            Element docs = new_document.createElement("docs");
 
-            doc_2.appendChild(e_docs);
+            new_document.appendChild(docs);
+
 
             for (int i = 0; i < fileList.length; i++) { // parse
                 try {
                     File input = new File(String.valueOf(fileList[i]));
-                    String name = String.valueOf(input);
+                    String file = String.valueOf(input);
 
-                    if (name.contains(".html")) {
+                    if (file.contains(".html")) {
 
-                        Document doc = Jsoup.parse(input, "UTF-8"); // library
+                        Document document = Jsoup.parse(input, "UTF-8"); // parse html files
 
-                        Element e_doc = doc_2.createElement("doc");
-                        Element e_title = doc_2.createElement("title");
-                        Element e_body = doc_2.createElement("body");
+                        Element doc = new_document.createElement("doc");
+                        Element title = new_document.createElement("title");
+                        Element body = new_document.createElement("body");
 
-                        e_doc.setAttribute("id", String.valueOf(id));
-                        e_title.appendChild(doc_2.createTextNode(doc.title()));
-                        e_body.appendChild(doc_2.createTextNode(doc.text()));
+                        doc.setAttribute("id", String.valueOf(id));
+                        title.appendChild(new_document.createTextNode(document.title()));
+                        body.appendChild(new_document.createTextNode(document.body().text()));
 
-                        e_doc.appendChild(e_title);
-                        e_doc.appendChild(e_body);
-                        e_docs.appendChild(e_doc);
+                        doc.appendChild(title);
+                        doc.appendChild(body);
+                        docs.appendChild(doc);
 
                         id++;
                     }
@@ -68,17 +74,55 @@ public class Test {
 
             }
 
-            try {  // xml
+            try {  // html to xml
                 TransformerFactory transformerFactory = TransformerFactory.newInstance();
                 Transformer transformer = transformerFactory.newTransformer();
                 transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
 
-                DOMSource source = new DOMSource(doc_2);
+                DOMSource source = new DOMSource(new_document);
                 StreamResult result = new StreamResult(new FileOutputStream(new File("/Users/bong/SimpleIR/collection.xml")));
                 transformer.transform(source, result);
             } catch (TransformerException | FileNotFoundException e) {
                 e.printStackTrace();
             }
+
+            File collection = new File("/Users/bong/SimpleIR/collection.xml");  // collection.xml
+
+            try {
+                DocumentBuilder builder = docFactory.newDocumentBuilder();
+                org.w3c.dom.Document d = builder.parse(collection);
+                NodeList nodeList = d.getElementsByTagName("doc");
+                for (int i=0;i<nodeList.getLength();i++) {
+                    Node n = nodeList.item(i);
+                    System.out.println(n.getLastChild().getTextContent());
+
+                    KeywordExtractor ke = new KeywordExtractor();
+                    KeywordList kl = ke.extractKeyword(n.getLastChild().getTextContent(), true);
+
+                    StringBuilder sb = new StringBuilder();
+                    for (int j = 0; j < kl.size(); j++) {
+                        Keyword kwrd = kl.get(j);
+                        sb.append(kwrd.getString() + ":" + kwrd.getCnt() + "#");
+                    }
+                    n.getLastChild().setTextContent(sb.toString());
+                }
+                try {  // collection to index
+                    TransformerFactory transformerFactory = TransformerFactory.newInstance();
+                    Transformer transformer = transformerFactory.newTransformer();
+                    transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
+
+                    DOMSource source = new DOMSource(d);
+                    StreamResult result = new StreamResult(new FileOutputStream(new File("/Users/bong/SimpleIR/index.xml")));
+                    transformer.transform(source, result);
+                } catch (TransformerException | FileNotFoundException e) {
+                    e.printStackTrace();
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+
         }
     }
 }
