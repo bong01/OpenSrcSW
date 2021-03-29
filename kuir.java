@@ -9,25 +9,30 @@ import java.io.IOException;
 
 
 public class kuir {
-    public static void main(String[] args) throws ParserConfigurationException, IOException, TransformerException, SAXException {
+    public static void main(String[] args) throws ParserConfigurationException, IOException, TransformerException, SAXException, ClassNotFoundException {
         if (args.length > 1) {
             String arg = args[0];
             switch (arg) {
-                case "-c":
+                case "-c" -> {
                     String dir = args[1];
                     System.out.println(dir);
                     File path = new File(dir); // file list
                     File[] fileList = path.listFiles();
                     makeCollection mc = new makeCollection();
                     mc.mkCollection(fileList);
-                    break;
-                case "-k":
-                    if (args[1] != null) {
-                        String collection_dir = args[1];
-                        File collection = new File(collection_dir);  // collection.xml
-                        makeKeyword mk = new makeKeyword();
-                        mk.mkKeyword(collection);
-                    }
+                }
+                case "-k" -> {
+                    String collection_dir = args[1];
+                    File collection = new File(collection_dir);  // collection.xml
+                    makeKeyword mk = new makeKeyword();
+                    mk.mkKeyword(collection);
+                }
+                case "-i" -> {
+                    String index_dir = args[1];
+                    indexer indexer = new indexer();
+                    indexer.makeIndex(index_dir);
+                    indexer.readIndex();
+                }
             }
 
         } else {
